@@ -1,20 +1,20 @@
 {
   "collection": "@nestjs/schematics",
-  "sourceRoot": "apps/orders/src",
+  "sourceRoot": "apps/users/src",
   "monorepo": true,
-  "root": "apps/orders",
+  "root": "apps/users",
   "compilerOptions": {
     "webpack": true,
-    "tsConfigPath": "apps/orders/tsconfig.app.json"
+    "tsConfigPath": "apps/users/tsconfig.app.json"
   },
   "projects": {
-    "orders": {
+    "users": {
       "type": "application",
-      "root": "apps/orders",
+      "root": "apps/users",
       "entryFile": "main",
-      "sourceRoot": "apps/orders/src",
+      "sourceRoot": "apps/users/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/orders/tsconfig.app.json"
+        "tsConfigPath": "apps/users/tsconfig.app.json"
       }
     },
     "billing": {

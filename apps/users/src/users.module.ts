@@ -3,10 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import * as Joi from 'joi';
 import { DatabaseModule, RmqModule } from '@app/common';
-import { OrdersController } from './orders.controller';
-import { OrdersService } from './orders.service';
-import { OrdersRepository } from './orders.repository';
-import { Order, OrderSchema } from './schemas/order.schema';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+import { UsersRepository } from './users.repository';
+import { User, UserSchema } from './schemas/user.schema';
 import { BILLING_SERVICE } from './constants/services';
 
 @Module({
@@ -17,15 +17,15 @@ import { BILLING_SERVICE } from './constants/services';
         MONGODB_URI: Joi.string().required(),
         PORT: Joi.number().required(),
       }),
-      envFilePath: './apps/orders/.env',
+      envFilePath: './apps/users/.env',
     }),
     DatabaseModule,
-    MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     RmqModule.register({
       name: BILLING_SERVICE,
     }),
   ],
-  controllers: [OrdersController],
-  providers: [OrdersService, OrdersRepository],
+  controllers: [UsersController],
+  providers: [UsersService, UsersRepository],
 })
-export class OrdersModule {}
+export class UsersModule {}
