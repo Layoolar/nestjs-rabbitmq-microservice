@@ -1,23 +1,23 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { RmqService } from '@app/common';
-import { BillingService } from './billing.service';
+import { EmailService } from './email.service';
 
 @Controller()
-export class BillingController {
+export class EmailController {
   constructor(
-    private readonly billingService: BillingService,
+    private readonly emailService: EmailService,
     private readonly rmqService: RmqService,
   ) {}
 
   @Get()
   getHello(): string {
-    return this.billingService.getHello();
+    return this.emailService.getHello();
   }
 
   @EventPattern('user_created')
   async handleUserCreated(@Payload() data: any, @Ctx() context: RmqContext) {
-    this.billingService.bill(data);
+    this.emailService.sendEmail(data);
     this.rmqService.ack(context);
   }
 }

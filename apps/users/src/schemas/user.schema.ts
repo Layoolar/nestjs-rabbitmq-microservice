@@ -3,14 +3,17 @@ import { AbstractDocument } from '@app/common';
 
 @Schema({ versionKey: false })
 export class User extends AbstractDocument {
-  @Prop()
-  name: string;
+  @Prop({unique: true})
+  email: string;
 
   @Prop()
-  price: number;
+  first_name: string;
 
   @Prop()
-  phoneNumber: string;
+  last_name: string;
+
+  @Prop()
+  avatar: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

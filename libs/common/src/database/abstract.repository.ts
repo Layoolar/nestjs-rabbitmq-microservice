@@ -17,25 +17,34 @@ export abstract class AbstractRepository<TDocument extends AbstractDocument> {
     private readonly connection: Connection,
   ) {}
 
-  async create(
-    document: Omit<TDocument, '_id'>,
+async create(
+    document: Omit<TDocument, '_id'> & { _id?: Types.ObjectId },
     options?: SaveOptions,
   ): Promise<TDocument> {
+    let _id: Types.ObjectId;
+    
+    if (document._id) {
+      _id = document._id;
+    } else {
+      _id = new Types.ObjectId();
+    }
+  
     const createdDocument = new this.model({
       ...document,
-      _id: new Types.ObjectId(),
+      _id,
     });
+    
     return (
       await createdDocument.save(options)
     ).toJSON() as unknown as TDocument;
   }
-
+  
   async findOne(filterQuery: FilterQuery<TDocument>): Promise<TDocument> {
     const document = await this.model.findOne(filterQuery, {}, { lean: true });
 
     if (!document) {
       this.logger.warn('Document not found with filterQuery', filterQuery);
-      throw new NotFoundException('Document not found.');
+      return null;
     }
 
     return document;

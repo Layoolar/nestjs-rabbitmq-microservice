@@ -7,7 +7,7 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { UsersRepository } from './users.repository';
 import { User, UserSchema } from './schemas/user.schema';
-import { BILLING_SERVICE } from './constants/services';
+import { EMAIL_SERVICE } from './constants/services';
 
 @Module({
   imports: [
@@ -22,7 +22,7 @@ import { BILLING_SERVICE } from './constants/services';
     DatabaseModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     RmqModule.register({
-      name: BILLING_SERVICE,
+      name: EMAIL_SERVICE,
     }),
   ],
   controllers: [UsersController],

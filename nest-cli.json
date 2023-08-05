@@ -17,13 +17,13 @@
         "tsConfigPath": "apps/users/tsconfig.app.json"
       }
     },
-    "billing": {
+    "email": {
       "type": "application",
-      "root": "apps/billing",
+      "root": "apps/email",
       "entryFile": "main",
-      "sourceRoot": "apps/billing/src",
+      "sourceRoot": "apps/email/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/billing/tsconfig.app.json"
+        "tsConfigPath": "apps/email/tsconfig.app.json"
       }
     },
     "common": {
