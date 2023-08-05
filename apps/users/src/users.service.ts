@@ -4,6 +4,8 @@ import { lastValueFrom } from 'rxjs';
 import { API_BASE_URL, EMAIL_SERVICE } from './constants/services';
 import { CreateUserRequest } from './dto/create-user.request';
 import { UsersRepository } from './users.repository';
+import { CreateAvatarRequest } from './dto/create-avatar-request';
+import { AvatarsRepository } from './avatars.repository';
 import axios from 'axios';
 import path from 'path';
 import * as fs from 'fs/promises';
@@ -15,6 +17,7 @@ import * as https from 'https';
 export class UsersService {
   constructor(
     private readonly usersRepository: UsersRepository,
+    private readonly avatarsRepository: AvatarsRepository,
     @Inject(EMAIL_SERVICE) private emailClient: ClientProxy,
   ) {}
 
@@ -76,7 +79,31 @@ export class UsersService {
 
   async getUserAvatar(userId: number) {
 
+    const existingUser = await this.avatarsRepository.findOne({ userId: userId });
 
+    if (existingUser) {
+      throw new ConflictException('User with this id already exists');
+    }
+    
+
+    const session = await this.avatarsRepository.startTransaction();
+    try {
+      const request = {
+      userId: 11,
+      avatar: "kkk"
+    }
+      const avatar = await this.avatarsRepository.create(request, { session });
+      await lastValueFrom(
+        this.emailClient.emit('avatar_created', {
+          request,
+        }),
+      );
+      await session.commitTransaction();
+      return avatar;
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    }
 
 
   return this.imageUrlToBase64("https://reqres.in/img/faces/1-image.jpg");
