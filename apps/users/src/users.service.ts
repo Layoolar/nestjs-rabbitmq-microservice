@@ -6,8 +6,9 @@ import { CreateUserRequest } from './dto/create-user.request';
 import { UsersRepository } from './users.repository';
 import axios from 'axios';
 import path from 'path';
-import fs from 'fs/promises';
+import * as fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
+import * as https from 'https';
 
 
 @Injectable()
@@ -17,34 +18,35 @@ export class UsersService {
     @Inject(EMAIL_SERVICE) private emailClient: ClientProxy,
   ) {}
 
-
-
+  
+  private async imageUrlToBase64(url) {
+    try {
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+      });
+  
+      const contentType = response.headers['content-type'];
+  
+      const base64String = `data:${contentType};base64,${Buffer.from(
+        response.data,
+      ).toString('base64')}`;
+  
+      return base64String;
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  
 
   async createUser(request: CreateUserRequest, id?: number) {
-    let finalRequest;
     const existingUser = await this.usersRepository.findOne({ email: request.email });
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
 
-    if(id) {
-      const existingUserWithId= await this.usersRepository.findOne({ id });
-      if (existingUserWithId) {
-        throw new ConflictException('User with this id already exists');
-      }
-
-      finalRequest = {
-        ...request,
-        _id: id
-      }
-    }
-    else {
-      finalRequest = request;
-    }
-
     const session = await this.usersRepository.startTransaction();
     try {
-      const user = await this.usersRepository.create(finalRequest, { session });
+      const user = await this.usersRepository.create(request, { session });
       await lastValueFrom(
         this.emailClient.emit('user_created', {
           request,
@@ -57,6 +59,7 @@ export class UsersService {
       throw err;
     }
   }
+
 
   async getUsers() {
     return this.usersRepository.find({});
@@ -72,46 +75,16 @@ export class UsersService {
   }
 
   async getUserAvatar(userId: number) {
-    const user = await this.usersRepository.findOne({ userId });
 
-    if (user.avatar) {
-      const avatarFilePath = path.join(__dirname, 'avatars', user.avatar);
 
-      try {
-        const avatarData = await fs.readFile(avatarFilePath);
-        return avatarData.toString('base64');
-      } catch (error) {
-        throw new InternalServerErrorException('Failed to retrieve avatar');
-      }
-    }
-    
-    else {
-      try {
-        return path;
-        const response = await this.getUser(userId);
-        const avatarUrl = response.data.avatar;
 
-        const avatarResponse = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
-        return avatarResponse.data;
-        const avatarFileId = uuidv4();
-        const avatarFilePath = path.join(__dirname, 'images', `${avatarFileId}.jpg`);
-        await fs.writeFile(avatarFilePath, avatarData);
 
-        user.avatar = avatarFileId;
-        await this.usersRepository.findOneAndUpdate(
-          { userId },
-          { avatar: avatarFileId }
-        );  
+  return this.imageUrlToBase64("https://reqres.in/img/faces/1-image.jpg");
 
-        return avatarData.toString('base64');
-      } catch (error) {
-        throw new InternalServerErrorException('Failed to retrieve avatar');
-      }
-    }
   }
 
 
-  async deleteUserAvatar(userId: number) {
-    // Implement logic to delete avatar from both file system and MongoDB
-  }
+  // async deleteUserAvatar(userId: number) {
+  //   // Implement logic to delete avatar from both file system and MongoDB
+  // }
 }
