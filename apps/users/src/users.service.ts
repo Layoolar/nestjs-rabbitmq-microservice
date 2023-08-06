@@ -4,47 +4,87 @@ import { lastValueFrom } from 'rxjs';
 import { API_BASE_URL, EMAIL_SERVICE } from './constants/services';
 import { CreateUserRequest } from './dto/create-user.request';
 import { UsersRepository } from './users.repository';
+import { CreateAvatarRequest } from './dto/create-avatar-request';
+import { AvatarsRepository } from './avatars.repository';
 import axios from 'axios';
-import path from 'path';
-import fs from 'fs/promises';
+import * as path from 'path';
+import * as fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
+import * as https from 'https';
 
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly usersRepository: UsersRepository,
+    private readonly avatarsRepository: AvatarsRepository,
     @Inject(EMAIL_SERVICE) private emailClient: ClientProxy,
   ) {}
 
+  private async imageUrlToBase64AndSave(url: string, outputFilePath: string): Promise<string> {
+    try {
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+      });
+
+      const contentType = response.headers['content-type'];
+
+      const base64String = `data:${contentType};base64,${Buffer.from(
+        response.data,
+      ).toString('base64')}`;
+
+      await fs.writeFile(outputFilePath, response.data); // Save the image before conversion
+
+      return base64String;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  
+  private async deleteFile(filePath: string): Promise<void> {
+    try {
+      await fs.unlink(filePath);
+    } catch (err) {
+      console.error(`Error deleting file ${filePath}:`, err);
+    }
+  }
+
+  async getAvatar(userId: number) {
+    try {
+      const response = await this.avatarsRepository.findOne({userId: userId})
+      return response;
+    } catch (error) {
+      throw new NotFoundException('User not found');
+    }
+  }
+
+  async saveAvatar(userId: number, avatar: string, location: string) {
+    const session = await this.avatarsRepository.startTransaction();
+    try {
+      const request = {
+      userId,
+      avatar,
+      location,
+    }
+      const response = await this.avatarsRepository.create(request, { session });
+      await session.commitTransaction();
+      return response;
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    }
+  }
 
 
-
-  async createUser(request: CreateUserRequest, id?: number) {
-    let finalRequest;
+  async createUser(request: CreateUserRequest) {
     const existingUser = await this.usersRepository.findOne({ email: request.email });
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
 
-    if(id) {
-      const existingUserWithId= await this.usersRepository.findOne({ id });
-      if (existingUserWithId) {
-        throw new ConflictException('User with this id already exists');
-      }
-
-      finalRequest = {
-        ...request,
-        _id: id
-      }
-    }
-    else {
-      finalRequest = request;
-    }
-
     const session = await this.usersRepository.startTransaction();
     try {
-      const user = await this.usersRepository.create(finalRequest, { session });
+      const user = await this.usersRepository.create(request, { session });
       await lastValueFrom(
         this.emailClient.emit('user_created', {
           request,
@@ -57,6 +97,7 @@ export class UsersService {
       throw err;
     }
   }
+
 
   async getUsers() {
     return this.usersRepository.find({});
@@ -71,47 +112,33 @@ export class UsersService {
     }
   }
 
+  
   async getUserAvatar(userId: number) {
-    const user = await this.usersRepository.findOne({ userId });
-
-    if (user.avatar) {
-      const avatarFilePath = path.join(__dirname, 'avatars', user.avatar);
-
-      try {
-        const avatarData = await fs.readFile(avatarFilePath);
-        return avatarData.toString('base64');
+    // return this.avatarsRepository.find({});
+    const existingUser = await this.avatarsRepository.findOne({ userId: userId });
+    if (existingUser) {
+      return existingUser.avatar;
+    } else {
+      try { 
+      const avatarFileId = uuidv4();
+        const location = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars', `${avatarFileId}.jpg`);
+        const newUser = await this.getUser(userId);
+        const newUserAvatar = newUser.data.avatar;
+        const base64Avatar = await this.imageUrlToBase64AndSave(newUserAvatar, location);
+        await this.saveAvatar(userId,base64Avatar, location);
+        return base64Avatar;
       } catch (error) {
-        throw new InternalServerErrorException('Failed to retrieve avatar');
-      }
-    }
-    
-    else {
-      try {
-        return path;
-        const response = await this.getUser(userId);
-        const avatarUrl = response.data.avatar;
-
-        const avatarResponse = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
-        return avatarResponse.data;
-        const avatarFileId = uuidv4();
-        const avatarFilePath = path.join(__dirname, 'images', `${avatarFileId}.jpg`);
-        await fs.writeFile(avatarFilePath, avatarData);
-
-        user.avatar = avatarFileId;
-        await this.usersRepository.findOneAndUpdate(
-          { userId },
-          { avatar: avatarFileId }
-        );  
-
-        return avatarData.toString('base64');
-      } catch (error) {
-        throw new InternalServerErrorException('Failed to retrieve avatar');
+        throw new NotFoundException('Error saving file')
       }
     }
   }
 
 
   async deleteUserAvatar(userId: number) {
-    // Implement logic to delete avatar from both file system and MongoDB
+    const response = await this.getAvatar(userId);
+    const k = await this.deleteFile(response.location)
+    const deletUser = await this.avatarsRepository.findOneAndDelete({ userId: userId });
+    return {success: true}
   }
 }
+

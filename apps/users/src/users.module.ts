@@ -7,6 +7,8 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { UsersRepository } from './users.repository';
 import { User, UserSchema } from './schemas/user.schema';
+import { AvatarsRepository } from './avatars.repository';
+import { Avatar, AvatarSchema } from './schemas/avatar.schema';
 import { EMAIL_SERVICE } from './constants/services';
 
 @Module({
@@ -21,11 +23,12 @@ import { EMAIL_SERVICE } from './constants/services';
     }),
     DatabaseModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([{ name: Avatar.name, schema: AvatarSchema }]),
     RmqModule.register({
       name: EMAIL_SERVICE,
     }),
   ],
   controllers: [UsersController],
-  providers: [UsersService, UsersRepository],
+  providers: [UsersService, UsersRepository, AvatarsRepository],
 })
 export class UsersModule {}
