@@ -21,26 +21,7 @@ export class UsersService {
     @Inject(EMAIL_SERVICE) private emailClient: ClientProxy,
   ) {}
 
-  
-  // private async imageUrlToBase64(url) {
-  //   try {
-  //     const response = await axios.get(url, {
-  //       responseType: 'arraybuffer',
-  //     });
-  
-  //     const contentType = response.headers['content-type'];
-  
-  //     const base64String = `data:${contentType};base64,${Buffer.from(
-  //       response.data,
-  //     ).toString('base64')}`;
-  
-  //     return base64String;
-  //   } catch (err) {
-  //     console.log(err);
-  //   }
-  // }
-
-  async imageUrlToBase64AndSave(url: string, outputFilePath: string): Promise<string> {
+  private async imageUrlToBase64AndSave(url: string, outputFilePath: string): Promise<string> {
     try {
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
@@ -60,20 +41,42 @@ export class UsersService {
     }
   }
   
-  private async saveImageToFile(url, filePath) {
+  private async deleteFile(filePath: string): Promise<void> {
     try {
-      const response = await axios.get(url, {
-        responseType: 'arraybuffer',
-      });
-  
-      await fs.writeFile(filePath, response.data);
-      console.log('Image saved successfully');
+      await fs.unlink(filePath);
     } catch (err) {
-      console.error(err);
+      console.error(`Error deleting file ${filePath}:`, err);
     }
   }
 
-  async createUser(request: CreateUserRequest, id?: number) {
+  async getAvatar(userId: number) {
+    try {
+      const response = await this.avatarsRepository.findOne({userId: userId})
+      return response;
+    } catch (error) {
+      throw new NotFoundException('User not found');
+    }
+  }
+
+  async saveAvatar(userId: number, avatar: string, location: string) {
+    const session = await this.avatarsRepository.startTransaction();
+    try {
+      const request = {
+      userId,
+      avatar,
+      location,
+    }
+      const response = await this.avatarsRepository.create(request, { session });
+      await session.commitTransaction();
+      return response;
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    }
+  }
+
+
+  async createUser(request: CreateUserRequest) {
     const existingUser = await this.usersRepository.findOne({ email: request.email });
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
@@ -109,53 +112,33 @@ export class UsersService {
     }
   }
 
-  async saveAvatar(userId: number, avatar: string) {
-    const session = await this.avatarsRepository.startTransaction();
-    try {
-      const request = {
-      userId,
-      avatar,
-    }
-      // const response = await this.avatarsRepository.create(request, { session });
-      await session.commitTransaction();
-      // return response;
-      return "meee"
-    } catch (err) {
-      await session.abortTransaction();
-      throw err;
-    }
-  }
-
+  
   async getUserAvatar(userId: number) {
     // return this.avatarsRepository.find({});
-    // const location = path.join(__dirname, 'uploads', 'avatar', 'file.jpg');
-
-const location = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars', 'file.jpg');
-
-    // return location;
-    return await this.imageUrlToBase64AndSave("https://reqres.in/img/faces/1-image.jpg", location)
-    
-
-    // const existingUser = await this.avatarsRepository.findOne({ userId: userId });
-
-    // if (existingUser) {
-    //   return existingUser.avatar;
-    // } else {
-    //   try {
-          const location = path.join(__dirname, '..', 'users', 'uploads', 'file.jpg')
-    //     const newUser = await this.getUser(userId);
-    //     const newUserAvatar = newUser.data.avatar;
-    //     const base64Avatar = await this.imageUrlToBase64(newUserAvatar);
-    //     const savedUser = this.saveAvatar(userId,base64Avatar);
-    //     return savedUser;
-    //   } catch (error) {
-    //     throw new NotFoundException('No')
-    //   }
-    // }
+    const existingUser = await this.avatarsRepository.findOne({ userId: userId });
+    if (existingUser) {
+      return existingUser.avatar;
+    } else {
+      try { 
+      const avatarFileId = uuidv4();
+        const location = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars', `${avatarFileId}.jpg`);
+        const newUser = await this.getUser(userId);
+        const newUserAvatar = newUser.data.avatar;
+        const base64Avatar = await this.imageUrlToBase64AndSave(newUserAvatar, location);
+        await this.saveAvatar(userId,base64Avatar, location);
+        return base64Avatar;
+      } catch (error) {
+        throw new NotFoundException('Error saving file')
+      }
+    }
   }
 
 
-  // async deleteUserAvatar(userId: number) {
-  //   // Implement logic to delete avatar from both file system and MongoDB
-  // }
+  async deleteUserAvatar(userId: number) {
+    const response = await this.getAvatar(userId);
+    const k = await this.deleteFile(response.location)
+    const deletUser = await this.avatarsRepository.findOneAndDelete({ userId: userId });
+    return {success: true}
+  }
 }
+

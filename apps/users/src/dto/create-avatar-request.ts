@@ -7,7 +7,9 @@ import {
     IsPhoneNumber,
     IsPositive,
     IsString,
+    isNotEmpty,
     isNumber,
+    isString,
   } from 'class-validator';
   
   export class CreateAvatarRequest {
@@ -17,6 +19,10 @@ import {
     @IsString()
     @IsNotEmpty()
     avatar: string;
+
+    @IsString()
+    @IsNotEmpty()
+    location: string;
 
   }
   

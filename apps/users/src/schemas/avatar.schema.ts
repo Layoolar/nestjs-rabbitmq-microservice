@@ -8,6 +8,9 @@ export class Avatar extends AbstractDocument {
 
   @Prop()
   avatar: string;
+
+  @Prop()
+  location: string;
 }
 
 export const AvatarSchema = SchemaFactory.createForClass(Avatar);
