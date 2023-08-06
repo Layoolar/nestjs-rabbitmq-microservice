@@ -15,6 +15,7 @@ import {
     userId: number;
 
     @IsString()
+    @IsNotEmpty()
     avatar: string;
 
   }

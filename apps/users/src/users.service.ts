@@ -7,7 +7,7 @@ import { UsersRepository } from './users.repository';
 import { CreateAvatarRequest } from './dto/create-avatar-request';
 import { AvatarsRepository } from './avatars.repository';
 import axios from 'axios';
-import path from 'path';
+import * as path from 'path';
 import * as fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
 import * as https from 'https';
@@ -22,24 +22,56 @@ export class UsersService {
   ) {}
 
   
-  private async imageUrlToBase64(url) {
+  // private async imageUrlToBase64(url) {
+  //   try {
+  //     const response = await axios.get(url, {
+  //       responseType: 'arraybuffer',
+  //     });
+  
+  //     const contentType = response.headers['content-type'];
+  
+  //     const base64String = `data:${contentType};base64,${Buffer.from(
+  //       response.data,
+  //     ).toString('base64')}`;
+  
+  //     return base64String;
+  //   } catch (err) {
+  //     console.log(err);
+  //   }
+  // }
+
+  async imageUrlToBase64AndSave(url: string, outputFilePath: string): Promise<string> {
+    try {
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+      });
+
+      const contentType = response.headers['content-type'];
+
+      const base64String = `data:${contentType};base64,${Buffer.from(
+        response.data,
+      ).toString('base64')}`;
+
+      await fs.writeFile(outputFilePath, response.data); // Save the image before conversion
+
+      return base64String;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  
+  private async saveImageToFile(url, filePath) {
     try {
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
       });
   
-      const contentType = response.headers['content-type'];
-  
-      const base64String = `data:${contentType};base64,${Buffer.from(
-        response.data,
-      ).toString('base64')}`;
-  
-      return base64String;
+      await fs.writeFile(filePath, response.data);
+      console.log('Image saved successfully');
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   }
-  
 
   async createUser(request: CreateUserRequest, id?: number) {
     const existingUser = await this.usersRepository.findOne({ email: request.email });
@@ -77,37 +109,49 @@ export class UsersService {
     }
   }
 
-  async getUserAvatar(userId: number) {
-
-    const existingUser = await this.avatarsRepository.findOne({ userId: userId });
-
-    if (existingUser) {
-      throw new ConflictException('User with this id already exists');
-    }
-    
-
+  async saveAvatar(userId: number, avatar: string) {
     const session = await this.avatarsRepository.startTransaction();
     try {
       const request = {
-      userId: 11,
-      avatar: "kkk"
+      userId,
+      avatar,
     }
-      const avatar = await this.avatarsRepository.create(request, { session });
-      await lastValueFrom(
-        this.emailClient.emit('avatar_created', {
-          request,
-        }),
-      );
+      // const response = await this.avatarsRepository.create(request, { session });
       await session.commitTransaction();
-      return avatar;
+      // return response;
+      return "meee"
     } catch (err) {
       await session.abortTransaction();
       throw err;
     }
+  }
 
+  async getUserAvatar(userId: number) {
+    // return this.avatarsRepository.find({});
+    // const location = path.join(__dirname, 'uploads', 'avatar', 'file.jpg');
 
-  return this.imageUrlToBase64("https://reqres.in/img/faces/1-image.jpg");
+const location = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars', 'file.jpg');
 
+    // return location;
+    return await this.imageUrlToBase64AndSave("https://reqres.in/img/faces/1-image.jpg", location)
+    
+
+    // const existingUser = await this.avatarsRepository.findOne({ userId: userId });
+
+    // if (existingUser) {
+    //   return existingUser.avatar;
+    // } else {
+    //   try {
+          const location = path.join(__dirname, '..', 'users', 'uploads', 'file.jpg')
+    //     const newUser = await this.getUser(userId);
+    //     const newUserAvatar = newUser.data.avatar;
+    //     const base64Avatar = await this.imageUrlToBase64(newUserAvatar);
+    //     const savedUser = this.saveAvatar(userId,base64Avatar);
+    //     return savedUser;
+    //   } catch (error) {
+    //     throw new NotFoundException('No')
+    //   }
+    // }
   }
 
 
