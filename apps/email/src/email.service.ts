@@ -8,7 +8,12 @@ export class EmailService {
     return 'Hello World!';
   }
 
-  sendEmail(data: any) {
+  sendMessage(data: any) {
     this.logger.log('Email...', data);
+  }
+
+
+  sendEmail(data: any) {
+    // Send Email
   }
 }

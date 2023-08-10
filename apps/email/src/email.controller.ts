@@ -17,7 +17,8 @@ export class EmailController {
 
   @EventPattern('user_created')
   async handleUserCreated(@Payload() data: any, @Ctx() context: RmqContext) {
-    this.emailService.sendEmail(data);
+    this.emailService.sendMessage(data);
+    this.emailService.sendEmail(data)
     this.rmqService.ack(context);
   }
 }
