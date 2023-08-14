@@ -10,15 +10,11 @@ export class EmailController {
     private readonly rmqService: RmqService,
   ) {}
 
-  @Get()
-  getHello(): string {
-    return this.emailService.getHello();
-  }
 
   @EventPattern('user_created')
   async handleUserCreated(@Payload() data: any, @Ctx() context: RmqContext) {
-    this.emailService.sendMessage(data);
-    this.emailService.sendEmail(data)
+    this.emailService.sendMessage(data.email);
+    this.emailService.sendEmail(data.email)
     this.rmqService.ack(context);
   }
 }

@@ -1,15 +1,8 @@
 import {
-    IsBase64,
-    IsEmail,
+  IsBase64,
     IsNotEmpty,
     IsNumber,
-    IsOptional,
-    IsPhoneNumber,
-    IsPositive,
-    IsString,
-    isNotEmpty,
-    isNumber,
-    isString,
+    IsString
   } from 'class-validator';
   
   export class CreateAvatarRequest {
@@ -17,12 +10,12 @@ import {
     userId: number;
 
     @IsString()
+    @IsBase64()
     @IsNotEmpty()
     avatar: string;
 
     @IsString()
     @IsNotEmpty()
     location: string;
-
   }
   

@@ -11,22 +11,17 @@ export class UsersController {
     return this.usersService.createUser(request);
   }
 
-  @Get('users')
-  async getUsers() {
-    return this.usersService.getUsers();
-  }
-
   @Get('user/:userId')
   async getUser(@Param('userId') userId: number) {
     return this.usersService.getUser(userId);
   }
 
-  @Get('user/:userId/avatar') // GET /api/user/{userId}/avatar
+  @Get('user/:userId/avatar') 
   async getUserAvatar(@Param('userId') userId: number) {
     return this.usersService.getUserAvatar(userId);
   }
 
-  @Delete('user/:userId/avatar') // DELETE /api/user/{userId}/avatar
+  @Delete('user/:userId/avatar') 
   async deleteUserAvatar(@Param('userId') userId: number) {
     return this.usersService.deleteUserAvatar(userId);
   }

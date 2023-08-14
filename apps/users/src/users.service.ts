@@ -7,10 +7,10 @@ import { UsersRepository } from './users.repository';
 import { CreateAvatarRequest } from './dto/create-avatar-request';
 import { AvatarsRepository } from './avatars.repository';
 import axios from 'axios';
+import * as bcrypt from 'bcrypt';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
-import * as https from 'https';
 
 
 @Injectable()
@@ -58,15 +58,10 @@ export class UsersService {
     }
   }
 
-  async saveAvatar(userId: number, avatar: string, location: string) {
+  async saveAvatar(data: CreateAvatarRequest) {
     const session = await this.avatarsRepository.startTransaction();
     try {
-      const request = {
-      userId,
-      avatar,
-      location,
-    }
-      const response = await this.avatarsRepository.create(request, { session });
+      const response = await this.avatarsRepository.create(data, { session });
       await session.commitTransaction();
       return response;
     } catch (err) {
@@ -84,23 +79,27 @@ export class UsersService {
 
     const session = await this.usersRepository.startTransaction();
     try {
-      const user = await this.usersRepository.create(request, { session });
+      const hashedPassword = await bcrypt.hash(request.password, 10);
+
+      // Replace the password in the request with the hashed password
+      const userWithHashedPassword: CreateUserRequest = {
+        ...request,
+        password: hashedPassword,
+      };
+
+      const user = await this.usersRepository.create(userWithHashedPassword, { session });
+      const { password, _id, ...userWithoutPassword } = user;
       await lastValueFrom(
         this.emailClient.emit('user_created', {
-          request,
+          request
         }),
       );
       await session.commitTransaction();
-      return user;
+      return userWithoutPassword;
     } catch (err) {
       await session.abortTransaction();
       throw err;
     }
-  }
-
-
-  async getUsers() {
-    return this.usersRepository.find({});
   }
 
   async getUser(userId: number) {
@@ -114,19 +113,21 @@ export class UsersService {
 
   
   async getUserAvatar(userId: number) {
-    // return this.avatarsRepository.find({});
     const existingUser = await this.avatarsRepository.findOne({ userId: userId });
     if (existingUser) {
-      return existingUser.avatar;
+      return {avatar : existingUser.avatar};
     } else {
       try { 
       const avatarFileId = uuidv4();
         const location = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars', `${avatarFileId}.jpg`);
         const newUser = await this.getUser(userId);
         const newUserAvatar = newUser.data.avatar;
-        const base64Avatar = await this.imageUrlToBase64AndSave(newUserAvatar, location);
-        await this.saveAvatar(userId,base64Avatar, location);
-        return base64Avatar;
+        const avatar = await this.imageUrlToBase64AndSave(newUserAvatar, location);
+        const data: CreateAvatarRequest = {
+          userId, avatar, location
+        }  
+        await this.saveAvatar(data);
+        return {avatar: avatar};
       } catch (error) {
         throw new NotFoundException('Error saving file')
       }
@@ -135,10 +136,15 @@ export class UsersService {
 
 
   async deleteUserAvatar(userId: number) {
-    const response = await this.getAvatar(userId);
+    try {
+      const response = await this.getAvatar(userId);
     const k = await this.deleteFile(response.location)
     const deletUser = await this.avatarsRepository.findOneAndDelete({ userId: userId });
     return {success: true}
+    } catch (error) {
+      throw new NotFoundException('Unable to find user')
+    }
+    
   }
 }
 

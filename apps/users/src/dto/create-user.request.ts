@@ -2,17 +2,13 @@ import {
   IsBase64,
   IsEmail,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
-  IsPhoneNumber,
-  IsPositive,
-  IsString,
-  isNumber,
+  IsString
 } from 'class-validator';
 
 export class CreateUserRequest {
   @IsEmail()
-  @IsOptional()
+  @IsNotEmpty()
   email: string;
 
   @IsString()
@@ -26,4 +22,8 @@ export class CreateUserRequest {
   @IsBase64()
   @IsOptional()
   avatar: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password:  string;
 }
